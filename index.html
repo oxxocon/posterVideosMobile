@@ -1,28 +1,48 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, viewport-fit=cover"
+  />
   <title>Video Player</title>
   <style>
-    body {
-      margin: 0;
-      background: #000;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-    }
+    html, body { height: 100%; margin: 0; background: #000; }
+    body { overflow: hidden; }
+    /* Video’yu tam ekran doldur (cover), ortala */
     video {
-      max-width: 100%;
-      height: auto;
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100dvh; /* mobil tarayıcı çubuklarına uyumlu */
+      object-fit: cover;
+      object-position: center;
+      background: #000;
+      display: block;
     }
   </style>
 </head>
 <body>
-  <video autoplay muted loop playsinline>
-    <source src="Poster1.2_916.mp4" type="video/mp4">
+  <video
+    autoplay
+    muted
+    loop
+    playsinline
+    preload="auto"
+    poster="poster-916.jpg"  <!-- opsiyonel: 1080x1920 poster -->
+  >
+    <source src="Poster1.2_916.mp4" type="video/mp4" />
     Tarayıcınız bu videoyu desteklemiyor.
   </video>
+  <script>
+    // iOS’ta autoplay güvence altına alma
+    const v = document.querySelector('video');
+    v && v.play().catch(() => {
+      // otomatik başlamazsa ilk dokunuşta başlat
+      const start = () => { v.play().catch(()=>{}); window.removeEventListener('touchstart', start); };
+      window.addEventListener('touchstart', start, { passive: true });
+    });
+  </script>
 </body>
-
 </html>
