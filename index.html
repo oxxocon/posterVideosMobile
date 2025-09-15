@@ -3,62 +3,103 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Video Player</title>
+  <title>Hero Video (Responsive)</title>
   <style>
-    html, body { height: 100%; margin: 0; background: #000; }
+    html, body { height: 100%; margin: 0; background:#000; }
     body { overflow: hidden; }
 
     /* Video’yu viewport’u eksiksiz dolduracak şekilde sabitle */
     video {
-      position: fixed;
-      inset: 0;
+      position: fixed; inset: 0;
       width: 100vw;
 
-      /* Sırayla en güncel vh birimleri ve polyfill: */
-      height: 100svh;          /* yeni tarayıcılar (safe) */
-      height: 100dvh;          /* dinamik vh */
-      height: calc(var(--vh, 1vh) * 100); /* polyfill */
+      /* Sırayla: desteklenen son değer kazanır */
+      height: 100dvh;                           /* dinamik vh */
+      height: calc(var(--vh, 1vh) * 100);       /* polyfill */
+      height: 100svh;                           /* yeni safe vh */
 
-      object-fit: cover;
-      object-position: center;
-      background: #000;
-      display: block;
+      object-fit: cover; object-position: center;
+      background: #000; display: block;
     }
 
-    /* Eski Android/Chrome varyasyonlarında küçük farklar için min boyutlar da ekleyelim */
+    /* Eski Android/Chrome varyasyonları için minimumlar */
     @supports not (height: 100dvh) {
       video { min-width: 100vw; min-height: 100vh; }
     }
   </style>
 </head>
 <body>
-  <video
-    autoplay
-    muted
-    loop
-    playsinline
-    preload="auto"
-    poster="poster-916.jpg"  <!-- opsiyonel: 1080x1920 poster -->
-  >
-    <source src="Poster1.2_916.mp4" type="video/mp4" />
-    Tarayıcınız bu videoyu desteklemiyor.
-  </video>
+  <video id="v" autoplay muted loop playsinline webkit-playsinline preload="auto"></video>
 
   <script>
-    // Dinamik vh polyfill: her yeniden boyutlandırmada gerçek yüksekliği uygula
+    // 1) Varlık yollarını kendi dosya adlarınla ayarla
+    // Dosyalar index.html ile aynı dizindeyse sadece adları bırakman yeterli:
+    const HERO_PORTRAIT   = 'Poster1.2_916.mp4';   // 9:16 (1080x1920)
+    const HERO_LANDSCAPE  = 'Poster1.2_169.mp4';   // 16:9 (1920x1080) - yoksa aynı 9:16’yı bırakabilirsin
+    const POSTER_PORTRAIT = 'poster-916.jpg';      // opsiyonel 9:16 poster
+    const POSTER_LANDSCAPE= 'poster-169.jpg';      // opsiyonel 16:9 poster
+
+    // 2) Dinamik vh polyfill (tarayıcı çubuklarına uyum)
     const setVh = () => {
-      const vh = window.innerHeight * 0.01;
-      document.documentElement.style.setProperty('--vh', `${vh}px`);
+      const h = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+      document.documentElement.style.setProperty('--vh', `${h * 0.01}px`);
     };
     setVh();
-    window.addEventListener('resize', setVh);
-    window.addEventListener('orientationchange', () => setTimeout(setVh, 300));
+    addEventListener('resize', setVh);
+    addEventListener('orientationchange', () => setTimeout(setVh, 300));
+    if (window.visualViewport) visualViewport.addEventListener('resize', setVh);
 
-    // iOS otomatik oynatma güvence
-    const v = document.querySelector('video');
-    v && v.play().catch(() => {
-      const start = () => { v.play().catch(()=>{}); window.removeEventListener('touchstart', start); };
-      window.addEventListener('touchstart', start, { passive: true });
+    const v = document.getElementById('v');
+    const isPortrait = () => {
+      if (screen.orientation && screen.orientation.type) {
+        return screen.orientation.type.startsWith('portrait');
+      }
+      return window.innerHeight >= window.innerWidth;
+    };
+
+    let currentMode = null;
+    function applySource(force = false) {
+      const mode = isPortrait() ? 'portrait' : 'landscape';
+      if (!force && mode === currentMode) return;
+      currentMode = mode;
+
+      const src    = mode === 'portrait' ? HERO_PORTRAIT   : HERO_LANDSCAPE;
+      const poster = mode === 'portrait' ? POSTER_PORTRAIT : POSTER_LANDSCAPE;
+
+      try { v.pause(); } catch {}
+      if (poster) v.poster = poster;
+      v.src = src;
+      v.load();
+      v.play().catch(() => {
+        // Otomatik başlayamazsa ilk etkileşimde başlat
+        const kick = () => { v.play().catch(()=>{}); window.removeEventListener('touchstart', kick); };
+        window.addEventListener('touchstart', kick, { passive: true });
+      });
+    }
+
+    // 3) İlk seçim + değişikliklerde yeniden seç
+    applySource(true);
+    addEventListener('resize', () => applySource(false));
+    addEventListener('orientationchange', () => setTimeout(() => applySource(true), 200));
+
+    // 4) Ağ dalgalanmasına karşı küçük dayanıklılık
+    let retries = 0, t;
+    const retry = () => {
+      if (retries > 3) return;
+      clearTimeout(t);
+      t = setTimeout(() => {
+        retries++;
+        try { v.load(); v.play().catch(()=>{}); } catch {}
+      }, 400);
+    };
+    v.addEventListener('canplaythrough', () => { retries = 0; v.play().catch(()=>{}); });
+    v.addEventListener('stalled', retry);
+    v.addEventListener('waiting', retry);
+    v.addEventListener('error', retry);
+
+    // 5) Sekme geri gelince tekrar oynatmayı dene
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) v.play().catch(()=>{});
     });
   </script>
 </body>
