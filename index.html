@@ -1,106 +1,27 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Hero Video (Responsive)</title>
+  <meta charset="UTF-8">
+  <title>Video Player</title>
   <style>
-    html, body { height: 100%; margin: 0; background:#000; }
-    body { overflow: hidden; }
-
-    /* Video’yu viewport’u eksiksiz dolduracak şekilde sabitle */
-    video {
-      position: fixed; inset: 0;
-      width: 100vw;
-
-      /* Sırayla: desteklenen son değer kazanır */
-      height: 100dvh;                           /* dinamik vh */
-      height: calc(var(--vh, 1vh) * 100);       /* polyfill */
-      height: 100svh;                           /* yeni safe vh */
-
-      object-fit: cover; object-position: center;
-      background: #000; display: block;
+    body {
+      margin: 0;
+      background: #000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
     }
-
-    /* Eski Android/Chrome varyasyonları için minimumlar */
-    @supports not (height: 100dvh) {
-      video { min-width: 100vw; min-height: 100vh; }
+    video {
+      max-width: 100%;
+      height: auto;
     }
   </style>
 </head>
 <body>
-  <video id="v" autoplay muted loop playsinline webkit-playsinline preload="auto"></video>
-
-  <script>
-    // 1) Varlık yollarını kendi dosya adlarınla ayarla
-    // Dosyalar index.html ile aynı dizindeyse sadece adları bırakman yeterli:
-    const HERO_PORTRAIT   = 'Poster1.2_916.mp4';   // 9:16 (1080x1920)
-    const HERO_LANDSCAPE  = 'Poster1.2_169.mp4';   // 16:9 (1920x1080) - yoksa aynı 9:16’yı bırakabilirsin
-    const POSTER_PORTRAIT = 'poster-916.jpg';      // opsiyonel 9:16 poster
-    const POSTER_LANDSCAPE= 'poster-169.jpg';      // opsiyonel 16:9 poster
-
-    // 2) Dinamik vh polyfill (tarayıcı çubuklarına uyum)
-    const setVh = () => {
-      const h = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-      document.documentElement.style.setProperty('--vh', `${h * 0.01}px`);
-    };
-    setVh();
-    addEventListener('resize', setVh);
-    addEventListener('orientationchange', () => setTimeout(setVh, 300));
-    if (window.visualViewport) visualViewport.addEventListener('resize', setVh);
-
-    const v = document.getElementById('v');
-    const isPortrait = () => {
-      if (screen.orientation && screen.orientation.type) {
-        return screen.orientation.type.startsWith('portrait');
-      }
-      return window.innerHeight >= window.innerWidth;
-    };
-
-    let currentMode = null;
-    function applySource(force = false) {
-      const mode = isPortrait() ? 'portrait' : 'landscape';
-      if (!force && mode === currentMode) return;
-      currentMode = mode;
-
-      const src    = mode === 'portrait' ? HERO_PORTRAIT   : HERO_LANDSCAPE;
-      const poster = mode === 'portrait' ? POSTER_PORTRAIT : POSTER_LANDSCAPE;
-
-      try { v.pause(); } catch {}
-      if (poster) v.poster = poster;
-      v.src = src;
-      v.load();
-      v.play().catch(() => {
-        // Otomatik başlayamazsa ilk etkileşimde başlat
-        const kick = () => { v.play().catch(()=>{}); window.removeEventListener('touchstart', kick); };
-        window.addEventListener('touchstart', kick, { passive: true });
-      });
-    }
-
-    // 3) İlk seçim + değişikliklerde yeniden seç
-    applySource(true);
-    addEventListener('resize', () => applySource(false));
-    addEventListener('orientationchange', () => setTimeout(() => applySource(true), 200));
-
-    // 4) Ağ dalgalanmasına karşı küçük dayanıklılık
-    let retries = 0, t;
-    const retry = () => {
-      if (retries > 3) return;
-      clearTimeout(t);
-      t = setTimeout(() => {
-        retries++;
-        try { v.load(); v.play().catch(()=>{}); } catch {}
-      }, 400);
-    };
-    v.addEventListener('canplaythrough', () => { retries = 0; v.play().catch(()=>{}); });
-    v.addEventListener('stalled', retry);
-    v.addEventListener('waiting', retry);
-    v.addEventListener('error', retry);
-
-    // 5) Sekme geri gelince tekrar oynatmayı dene
-    document.addEventListener('visibilitychange', () => {
-      if (!document.hidden) v.play().catch(()=>{});
-    });
-  </script>
+  <video autoplay muted loop playsinline>
+    <source src="Poster1.2_916.mp4" type="video/mp4">
+    Tarayıcınız bu videoyu desteklemiyor.
+  </video>
 </body>
 </html>
